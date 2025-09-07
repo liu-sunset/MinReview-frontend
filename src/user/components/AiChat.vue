@@ -26,19 +26,27 @@
         </div>
       </div>
       <div class="ai-chat-input">
-        <el-input
-          v-model="userInput"
-          placeholder="请输入您的问题..."
-          :disabled="isLoading"
-          @keyup.enter="sendMessage"
-        >
-          <template #append>
-            <el-button :disabled="isLoading || !userInput.trim()" @click="sendMessage">
-              <el-icon v-if="isLoading"><Loading /></el-icon>
-              <el-icon v-else><Position /></el-icon>
-            </el-button>
-          </template>
-        </el-input>
+        <template v-if="!userStore.isLoggedIn">
+          <div class="login-prompt">
+            <p>请先登录后再使用AI助手</p>
+            <el-button type="primary" size="small" @click="goToLogin">去登录</el-button>
+          </div>
+        </template>
+        <template v-else>
+          <el-input
+            v-model="userInput"
+            placeholder="请输入您的问题..."
+            :disabled="isLoading"
+            @keyup.enter="sendMessage"
+          >
+            <template #append>
+              <el-button :disabled="isLoading || !userInput.trim()" @click="sendMessage">
+                <el-icon v-if="isLoading"><Loading /></el-icon>
+                <el-icon v-else><Position /></el-icon>
+              </el-button>
+            </template>
+          </el-input>
+        </template>
       </div>
     </div>
   </div>
@@ -90,6 +98,11 @@ const closeChat = () => {
 // 最小化/展开聊天窗口
 const toggleMinimize = () => {
   isMinimized.value = !isMinimized.value;
+};
+
+// 跳转到登录页
+const goToLogin = () => {
+  window.location.href = '/login';
 };
 
 // 渲染Markdown
@@ -267,9 +280,10 @@ watch(messages, async () => {
     color: var(--el-color-white, white);
     transition: all 0.3s ease;
     border-radius: 8px;
+    background-color: rgba(255, 255, 255, 1.0); /* 添加默认背景色，使按钮更加可见 */
     
     &:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(255, 255, 255, 0.9); /* 增加悬停时的背景色对比度 */
       transform: translateY(-2px);
     }
   }
@@ -305,7 +319,7 @@ watch(messages, async () => {
       background-color: var(--el-color-primary, #409eff);
       color: var(--el-color-white, white);
       border-radius: 18px 18px 0 18px;
-      box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
     }
   }
   
@@ -349,6 +363,17 @@ watch(messages, async () => {
   padding: 15px;
   border-top: 1px solid var(--el-border-color-light, #e4e7ed);
   background-color: var(--el-bg-color, white);
+  
+  .login-prompt {
+    text-align: center;
+    padding: 20px;
+    
+    p {
+      margin: 0 0 15px 0;
+      color: var(--el-text-color-secondary, #606266);
+      font-size: 14px;
+    }
+  }
   
   .el-input__wrapper {
     border-radius: 20px;

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { adminLogin, type LoginParams, type LoginResponse } from '../api/admin'
+import { adminLogin, adminLogout, type LoginParams, type LoginResponse } from '../api/admin'
 
 export const useAdminStore = defineStore('admin', () => {
   // 管理员信息
@@ -40,14 +40,22 @@ export const useAdminStore = defineStore('admin', () => {
   }
   
   // 登出
-  const logout = () => {
-    // 清除本地存储
-    localStorage.removeItem('adminToken')
-    localStorage.removeItem('adminInfo')
-    
-    // 重置状态
-    adminInfo.value = null
-    isLoggedIn.value = false
+  const logout = async () => {
+    try {
+      // 调用后端登出接口
+      await adminLogout()
+    } catch (error) {
+      console.error('登出接口调用失败:', error)
+    } finally {
+      // 无论接口调用成功与否，都清除本地数据
+      // 清除本地存储
+      localStorage.removeItem('adminToken')
+      localStorage.removeItem('adminInfo')
+      
+      // 重置状态
+      adminInfo.value = null
+      isLoggedIn.value = false
+    }
   }
   
   return {

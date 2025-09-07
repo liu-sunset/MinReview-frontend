@@ -1,562 +1,284 @@
 <template>
   <div class="profile-container">
-    <div class="profile-header">
-      <el-button @click="goBack" icon="ArrowLeft" plain>返回</el-button>
-      <h2>个人中心</h2>
-    </div>
-    
-    <div class="profile-content">
-      <div class="profile-left">
-        <div class="avatar-container">
-          <el-avatar :size="120" :src="userInfo.avatarUrl || defaultAvatar" />
-        </div>
+    <div class="profile-card">
+      <div class="profile-header">
+        <h2>个人中心</h2>
       </div>
-      
-      <div class="profile-right">
-        <div class="info-section">
-          <h3>个人信息</h3>
-          <div class="info-item">
-            <span class="label">姓名：</span>
-            <span class="value">{{ userInfo.name }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">性别：</span>
-            <span class="value">{{ formatGender(userInfo.gender) }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">联系电话：</span>
-            <span class="value">{{ userInfo.phone || '未设置' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">注册时间：</span>
-            <span class="value">{{ userInfo.createTime }}</span>
-          </div>
+      <div class="profile-content">
+        <div class="avatar-section">
+          <el-avatar :size="100" :src="userInfo.avatarUrl || defaultAvatar" @error="handleAvatarError">
+            <el-icon><User /></el-icon>
+          </el-avatar>
+          <el-upload
+            class="avatar-uploader"
+            action=""
+            :http-request="uploadAvatar"
+            :show-file-list="false"
+            accept="image/*"
+          >
+            <el-button type="primary" size="small" class="upload-btn">更换头像</el-button>
+          </el-upload>
         </div>
         
-        <div class="action-buttons">
-          <el-button type="primary" @click="openEditDialog">编辑信息</el-button>
-          <el-button type="danger" @click="confirmLogout">注销账号</el-button>
-          <el-button type="warning" @click="confirmSignOut">退出登录</el-button>
+        <div class="info-section">
+          <el-form :model="userInfo" label-width="80px">
+            <el-form-item label="用户名">
+              <el-input v-model="userInfo.name" placeholder="请输入用户名" />
+            </el-form-item>
+            <el-form-item label="手机号">
+              <el-input v-model="userInfo.phone" placeholder="请输入手机号" />
+            </el-form-item>
+            <el-form-item label="性别">
+              <el-radio-group v-model="userInfo.gender">
+                <el-radio :label="1">男</el-radio>
+                <el-radio :label="2">女</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="注册时间">
+              <el-input v-model="userInfo.createTime" disabled />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="saveUserInfo">保存信息</el-button>
+            </el-form-item>
+          </el-form>
         </div>
       </div>
     </div>
-    
-    <!-- 编辑信息对话框 -->
-    <el-dialog
-      v-model="editDialogVisible"
-      title="编辑个人信息"
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <el-form :model="editForm" :rules="rules" ref="editFormRef" label-width="80px">
-        <el-form-item label="姓名" prop="name">
-          <el-input v-model="editForm.name" placeholder="请输入姓名" />
-        </el-form-item>
-        <el-form-item label="头像" prop="avatarUrl">
-          <div class="avatar-upload">
-            <el-avatar 
-              :size="100" 
-              :src="editForm.avatarUrl || defaultAvatar" 
-              @click="triggerFileUpload"
-              class="clickable-avatar"
-            />
-            <div class="upload-tip">点击头像上传新图片</div>
-            <input 
-              type="file" 
-              ref="fileInput" 
-              style="display: none" 
-              accept="image/jpeg,image/png,image/gif" 
-              @change="handleFileChange"
-            />
-          </div>
-        </el-form-item>
-        <el-form-item label="性别" prop="gender">
-          <el-select v-model="editForm.gender" placeholder="请选择性别">
-            <el-option :value="0" label="未知" />
-            <el-option :value="1" label="男" />
-            <el-option :value="2" label="女" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="电话" prop="phone">
-          <el-input v-model="editForm.phone" placeholder="请输入联系电话" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="editDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitEdit" :loading="submitting">确认</el-button>
-        </span>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
-import { ArrowLeft } from '@element-plus/icons-vue';
-import type { FormInstance, FormRules } from 'element-plus';
+import { ref, reactive, onMounted } from 'vue';
+import { ElMessage } from 'element-plus';
+import { User } from '@element-plus/icons-vue';
 import { useUserStore } from '../store/user';
 import { userApi } from '../api/services';
 
-const router = useRouter();
 const userStore = useUserStore();
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
 
-// 用户信息
-const userInfo = ref({
+interface UserInfo {
+  id: number;
+  name: string;
+  phone: string;
+  avatarUrl: string;
+  gender: number;
+  createTime: string;
+}
+
+const userInfo = reactive<UserInfo>({
   id: 0,
   name: '',
-  avatarUrl: '',
-  gender: 0,
   phone: '',
+  avatarUrl: '',
+  gender: 1,
   createTime: ''
 });
 
-// 编辑表单相关
-const editDialogVisible = ref(false);
-const editFormRef = ref<FormInstance>();
-const submitting = ref(false);
-const fileInput = ref<HTMLInputElement | null>(null);
-const uploading = ref(false);
+const loading = ref(false);
 
-const editForm = reactive({
-  id: 0,
-  name: '',
-  avatarUrl: '',
-  gender: 0,
-  phone: ''
-});
-
-const rules = reactive<FormRules>({
-  name: [
-    { required: true, message: '请输入姓名', trigger: 'blur' },
-    { min: 2, max: 20, message: '姓名长度应为2-20个字符', trigger: 'blur' }
-  ],
-  gender: [
-    { required: true, message: '请选择性别', trigger: 'change' }
-  ]
+onMounted(async () => {
+  await fetchUserInfo();
 });
 
 // 获取用户信息
-const fetchUserInfo = async () => {
-  try {
-    const res = await userApi.getUserInfo(userStore.userId);
-    if (res.code === 1) {
-      userInfo.value = res.data;
-    } else {
-      ElMessage.error(res.msg || '获取用户信息失败');
-    }
-  } catch (error: any) {
-    console.error('获取用户信息错误:', error);
-    ElMessage.error(error.msg || '获取用户信息失败');
+async function fetchUserInfo() {
+  if (!userStore.isLoggedIn || !userStore.userInfo?.id) {
+    ElMessage.warning('请先登录');
+    return;
   }
-};
-
-// 格式化性别
-const formatGender = (gender: number) => {
-  switch (gender) {
-    case 1: return '男';
-    case 2: return '女';
-    default: return '未知';
-  }
-};
-
-// 返回上一页
-const goBack = () => {
-  router.back();
-};
-
-// 打开编辑对话框
-const openEditDialog = async () => {
-  try {
-    // 获取最新的用户信息
-    const res = await userApi.getUserInfo(userStore.userId);
-    if (res.code === 1) {
-      // 将获取到的用户信息填充到编辑表单中
-      editForm.id = res.data.id;
-      editForm.name = res.data.name;
-      editForm.avatarUrl = res.data.avatarUrl || '';
-      editForm.gender = res.data.gender;
-      editForm.phone = res.data.phone || '';
-      
-      editDialogVisible.value = true;
-    } else {
-      ElMessage.error(res.msg || '获取用户信息失败');
-    }
-  } catch (error: any) {
-    console.error('获取用户信息错误:', error);
-    ElMessage.error(error.msg || '获取用户信息失败');
-  }
-};
-
-// 触发文件上传
-const triggerFileUpload = () => {
-  if (fileInput.value) {
-    fileInput.value.click();
-  }
-};
-
-// 处理文件选择
-const handleFileChange = async (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  const files = target.files;
   
-  if (files && files.length > 0) {
-    const file = files[0];
-    // 验证文件类型
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (!validTypes.includes(file.type)) {
-      ElMessage.error('请上传JPG、PNG或GIF格式的图片');
-      return;
-    }
-    
-    // 验证文件大小（限制为10MB）
-    if (file.size > 10 * 1024 * 1024) {
-      ElMessage.error('图片大小不能超过10MB');
-      return;
-    }
-    
-    try {
-      uploading.value = true;
-      const loadingInstance = ElLoading.service({
-        lock: true,
-        text: '上传中...',
-        background: 'rgba(0, 0, 0, 0.7)'
+  loading.value = true;
+  try {
+    const response = await userApi.getUserInfo(userStore.userInfo.id);
+    if (response.code === 1) {
+      const data = response.data;
+      Object.assign(userInfo, {
+        id: data.id,
+        name: data.name,
+        phone: data.phone || '',
+        avatarUrl: data.avatarUrl || '',
+        gender: data.gender || 1,
+        createTime: data.createTime || ''
       });
-      
-      // 上传图片
-      const res = await userApi.uploadImage(file);
-      if (res.code === 1) {
-        // 更新表单中的头像URL
-        editForm.avatarUrl = res.data;
-        ElMessage.success('头像上传成功');
-      } else {
-        ElMessage.error(res.msg || '上传失败');
-      }
-    } catch (error: any) {
-      console.error('上传图片错误:', error);
-      ElMessage.error(error.msg || '上传失败');
-    } finally {
-      uploading.value = false;
-      ElLoading.service().close();
-      // 清空文件输入框，以便再次选择同一文件
-      if (fileInput.value) {
-        fileInput.value.value = '';
-      }
+    } else {
+      ElMessage.error(response.msg || '获取用户信息失败');
     }
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+    ElMessage.error('获取用户信息失败');
+  } finally {
+    loading.value = false;
   }
-};
+}
 
-// 提交编辑
-const submitEdit = async () => {
-  if (!editFormRef.value) return;
+// 保存用户信息
+async function saveUserInfo() {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录');
+    return;
+  }
   
-  await editFormRef.value.validate(async (valid) => {
-    if (valid) {
-      try {
-        submitting.value = true;
-        const res = await userApi.updateUserInfo(editForm);
-        if (res.code === 1) {
-          ElMessage.success('更新成功');
-          editDialogVisible.value = false;
-          
-          // 更新本地存储的用户信息
-          const updatedUserInfo = {
-            ...userStore.userInfo,
-            name: editForm.name,
-            avatarUrl: editForm.avatarUrl,
-            gender: editForm.gender,
-            phone: editForm.phone
-          };
-          localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
-          userStore.$patch({ userInfo: updatedUserInfo });
-          
-          // 重新获取用户信息
-          await fetchUserInfo();
-        } else {
-          ElMessage.error(res.msg || '更新失败');
-        }
-      } catch (error: any) {
-        console.error('更新用户信息错误:', error);
-        ElMessage.error(error.msg || '更新失败');
-      } finally {
-        submitting.value = false;
+  loading.value = true;
+  try {
+    const response = await userApi.updateUserInfo({
+      id: userInfo.id,
+      name: userInfo.name,
+      phone: userInfo.phone,
+      avatarUrl: userInfo.avatarUrl,
+      gender: userInfo.gender
+    });
+    
+    if (response.code === 1) {
+      ElMessage.success('保存成功');
+      // 更新store中的用户信息
+      if (userStore.userInfo) {
+        userStore.userInfo = {
+          ...userStore.userInfo,
+          name: userInfo.name,
+          phone: userInfo.phone,
+          avatarUrl: userInfo.avatarUrl,
+          gender: userInfo.gender
+        };
       }
+    } else {
+      ElMessage.error(response.msg || '保存失败');
     }
-  });
-};
+  } catch (error) {
+    console.error('保存用户信息失败:', error);
+    ElMessage.error('保存用户信息失败');
+  } finally {
+    loading.value = false;
+  }
+}
 
-// 确认注销账号
-const confirmLogout = () => {
-  ElMessageBox.confirm(
-    '确定要注销账号吗？此操作不可逆!',
-    '警告',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
+// 上传头像
+async function uploadAvatar(options: any) {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录');
+    return;
+  }
+  
+  const file = options.file;
+  if (!file) {
+    ElMessage.warning('请选择图片');
+    return;
+  }
+  
+  // 检查文件类型
+  const isImage = file.type.startsWith('image/');
+  if (!isImage) {
+    ElMessage.warning('请上传图片文件');
+    return;
+  }
+  
+  // 检查文件大小，限制为2MB
+  const isLt2M = file.size / 1024 / 1024 < 2;
+  if (!isLt2M) {
+    ElMessage.warning('图片大小不能超过2MB');
+    return;
+  }
+  
+  loading.value = true;
+  try {
+    // 先上传图片
+    const uploadResponse = await userApi.uploadImage(file);
+    if (uploadResponse.code !== 1) {
+      ElMessage.error(uploadResponse.msg || '上传头像失败');
+      return;
     }
-  ).then(async () => {
-    try {
-      const res = await userApi.deleteAccount(userStore.userId);
-      if (res.code === 1) {
-        ElMessage.success('账号已注销');
-        userStore.logout();
-        router.push('/login');
-      } else {
-        ElMessage.error(res.msg || '注销失败');
+    
+    const imageUrl = uploadResponse.data;
+    
+    // 更新用户信息
+    const response = await userApi.updateUserInfo({
+      id: userInfo.id,
+      name: userInfo.name,
+      phone: userInfo.phone,
+      avatarUrl: imageUrl,
+      gender: userInfo.gender
+    });
+    
+    if (response.code === 1) {
+      ElMessage.success('头像更新成功');
+      userInfo.avatarUrl = imageUrl;
+      
+      // 更新store中的用户信息
+      if (userStore.userInfo) {
+        userStore.userInfo = {
+          ...userStore.userInfo,
+          avatarUrl: imageUrl
+        };
       }
-    } catch (error: any) {
-      console.error('注销账号错误:', error);
-      ElMessage.error(error.msg || '注销失败');
+    } else {
+      ElMessage.error(response.msg || '更新头像失败');
     }
-  }).catch(() => {
-    // 用户取消操作
-  });
-};
+  } catch (error) {
+    console.error('上传头像失败:', error);
+    ElMessage.error('上传头像失败');
+  } finally {
+    loading.value = false;
+  }
+}
 
-// 确认退出登录
-const confirmSignOut = () => {
-  ElMessageBox.confirm(
-    '确定要退出登录吗？',
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    }
-  ).then(async () => {
-    try {
-      await userStore.logout();
-      ElMessage.success('已退出登录');
-      router.push('/login');
-    } catch (error: any) {
-      console.error('退出登录错误:', error);
-      ElMessage.error('退出登录失败');
-    }
-  }).catch(() => {
-    // 用户取消操作
-  });
-};
-
-onMounted(() => {
-  fetchUserInfo();
-});
+// 头像加载失败处理
+function handleAvatarError() {
+  userInfo.avatarUrl = defaultAvatar;
+}
 </script>
 
 <style scoped lang="scss">
 .profile-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+}
+
+.profile-card {
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.profile-header {
+  padding: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  
+  h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #333;
+  }
+}
+
+.profile-content {
   padding: 30px;
-  background-color: var(--el-bg-color, #fff);
-  border-radius: 20px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  animation: fadeIn 0.5s ease-in-out;
-  
-  .profile-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 30px;
-    
-    .el-button {
-      border-radius: 12px;
-      transition: all 0.3s ease;
-      padding: 10px 16px;
-      
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      }
-    }
-    
-    h2 {
-      margin-left: 20px;
-      color: var(--el-text-color-primary, #303133);
-      font-size: 24px;
-      font-weight: 600;
-    }
-  }
-  
-  .profile-content {
-    display: flex;
-    gap: 40px;
-    
-    @media (max-width: 768px) {
-      flex-direction: column;
-    }
-    
-    .profile-left {
-      flex: 0 0 200px;
-      
-      .avatar-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 25px;
-        background-color: var(--el-bg-color-page, #f5f5f5);
-        border-radius: 20px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
-        
-        &:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
-        }
-        
-        .el-avatar {
-          border: 3px solid var(--el-color-white, #fff);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-      }
-    }
-    
-    .profile-right {
-      flex: 1;
-      
-      .info-section {
-        background-color: var(--el-bg-color-page, #f5f5f5);
-        padding: 25px;
-        border-radius: 20px;
-        margin-bottom: 25px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
-        
-        &:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
-        }
-        
-        h3 {
-          margin-top: 0;
-          margin-bottom: 25px;
-          color: var(--el-text-color-primary, #303133);
-          font-size: 20px;
-          font-weight: 600;
-          position: relative;
-          
-          &:after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 0;
-            width: 40px;
-            height: 3px;
-            background-color: var(--el-color-primary, #409eff);
-            border-radius: 3px;
-          }
-        }
-        
-        .info-item {
-          margin-bottom: 18px;
-          display: flex;
-          padding: 10px 15px;
-          border-radius: 12px;
-          transition: all 0.3s ease;
-          
-          &:hover {
-            background-color: var(--el-bg-color, #fff);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-          }
-          
-          .label {
-            width: 100px;
-            color: var(--el-text-color-secondary, #606266);
-            font-weight: 500;
-          }
-          
-          .value {
-            color: var(--el-text-color-primary, #303133);
-            font-weight: 500;
-          }
-        }
-      }
-      
-      .action-buttons {
-        display: flex;
-        gap: 15px;
-        
-        .el-button {
-          border-radius: 12px;
-          padding: 12px 20px;
-          transition: all 0.3s ease;
-          
-          &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-          }
-          
-          &.el-button--danger:hover {
-            box-shadow: 0 4px 12px rgba(245, 108, 108, 0.2);
-          }
-          
-          &.el-button--primary:hover {
-            box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
-          }
-        }
-        
-        @media (max-width: 768px) {
-          flex-direction: column;
-        }
-      }
-    }
-  }
-}
-
-.dialog-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 15px;
+  flex-direction: column;
+  gap: 30px;
   
-  .el-button {
-    border-radius: 12px;
-    padding: 10px 20px;
-    transition: all 0.3s ease;
-    
-    &:hover {
-      transform: translateY(-2px);
-    }
+  @media (min-width: 768px) {
+    flex-direction: row;
   }
 }
 
-.avatar-upload {
+.avatar-section {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 15px;
-  
-  .clickable-avatar {
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: 3px solid transparent;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    
-    &:hover {
-      transform: scale(1.05);
-      border-color: var(--el-color-primary, #409EFF);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    }
-  }
-  
-  .upload-tip {
-    font-size: 13px;
-    color: var(--el-text-color-secondary, #909399);
-    background-color: var(--el-bg-color-page, #f5f5f5);
-    padding: 8px 15px;
-    border-radius: 20px;
-    transition: all 0.3s ease;
-    
-    &:hover {
-      background-color: var(--el-bg-color, #fff);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-  }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+.avatar-uploader {
+  margin-top: 10px;
+}
+
+.upload-btn {
+  border-radius: 20px;
+}
+
+.info-section {
+  flex: 1;
 }
 </style>

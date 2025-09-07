@@ -550,6 +550,25 @@
 }
 ```
 
+#### 1.1.7 管理员登出 
+
+- **URL**: `/admin/logout`
+
+- **Method**: `post`
+
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Response**:
+
+  ```json
+  {
+      "code": 1,
+      "msg": "success",
+      "data": null
+  }
+  ```
+
+
 ### 2.2 用户管理 
 
 #### 2.2.1 获取用户列表
@@ -760,7 +779,7 @@
   }
   ```
 
-  
+
 
 ### 2.4 食堂管理 
 
@@ -923,6 +942,8 @@
       "data": null
   }
   ```
+
+
 
 ### 2.5 楼层管理 
 
@@ -1219,6 +1240,7 @@
                     "userId": 1,
                     "dishId": 1,
                     "content": "宫保鸡丁味道很好，很正宗！",
+                    "imageUrl": "https://example.com/avatar1.jpg",
                     "status": 1,
                     "likeCount": 20,
                     "name": "张三",

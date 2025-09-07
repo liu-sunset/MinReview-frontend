@@ -208,7 +208,7 @@ const handleCommand = async (command: string) => {
       )
       
       // 清除登录状态
-      adminStore.logout()
+      await adminStore.logout()
       ElMessage.success('已退出登录')
       // 跳转到登录页
       router.push('/admin/login')

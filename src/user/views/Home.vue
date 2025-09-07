@@ -13,26 +13,42 @@
       </div>
       <div class="user-actions">
           <template v-if="userStore.isLoggedIn">
-          <el-dropdown trigger="click" @command="handleCommand">
-            <div class="avatar-container" @click.stop="goToProfile">
-              <el-avatar :size="40" :src="userStore.userInfo.avatarUrl || defaultAvatar" />
-            </div>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人中心</el-dropdown-item>
-                <el-dropdown-item command="logout">退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </template>
-        <template v-else>
-          <router-link to="/login" class="login-link">登录</router-link>
-          <router-link to="/register" class="register-link">注册</router-link>
-        </template>
+            <router-link to="/profile" class="profile-link">
+              <el-button type="text" class="profile-btn">
+                <el-icon><User /></el-icon>
+                个人中心
+              </el-button>
+            </router-link>
+            <el-button type="text" class="logout-btn" @click="handleLogout">
+              退出登录
+            </el-button>
+          </template>
+          <template v-else>
+            <router-link to="/login" class="login-link">登录</router-link>
+            <router-link to="/register" class="register-link">注册</router-link>
+          </template>
       </div>
     </header>
 
     <main class="main-content">
+      <!-- 未登录提示 -->
+      <div v-if="!userStore.isLoggedIn" class="login-prompt-banner">
+        <el-alert
+          title="登录即可体验完整功能"
+          description="登录后可以点赞、评论、使用AI助手等更多功能"
+          type="info"
+          :closable="false"
+          show-icon
+        >
+          <template #default>
+            <div class="prompt-content">
+              <span>登录即可体验完整功能</span>
+              <el-button type="primary" size="small" @click="goToLogin">立即登录</el-button>
+            </div>
+          </template>
+        </el-alert>
+      </div>
+      
       <div class="filters">
         <div class="filter-item">
           <el-select
@@ -128,7 +144,7 @@
 import { ref, reactive, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { Search, ArrowDown, ChatDotRound } from '@element-plus/icons-vue';
+import { Search, ArrowDown, ChatDotRound, User } from '@element-plus/icons-vue';
 import { useDishStore } from '../store/dish';
 import { useUserStore } from '../store/user';
 import { dishApi } from '../api/services';
@@ -153,7 +169,6 @@ interface Dish {
 const router = useRouter();
 const dishStore = useDishStore();
 const userStore = useUserStore();
-const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
 
 // 筛选条件
 const searchQuery = ref('');
@@ -192,6 +207,18 @@ const handleAiChatClick = () => {
     return;
   }
   showAiChat.value = true;
+};
+
+// 处理退出登录
+const handleLogout = async () => {
+  try {
+    await userStore.logout();
+    ElMessage.success('退出登录成功');
+    router.push('/');
+  } catch (error) {
+    console.error('退出登录失败:', error);
+    ElMessage.error('退出登录失败');
+  }
 };
 
 // 获取菜品列表
@@ -305,20 +332,9 @@ const handleSizeChange = (size: number) => {
   currentPage.value = 1;
 };
 
-// 跳转到个人中心页面
-const goToProfile = () => {
-  router.push('/profile');
-};
-
-// 处理用户下拉菜单命令
-const handleCommand = (command: string) => {
-  if (command === 'logout') {
-    userStore.logout();
-    ElMessage.success('已退出登录');
-    router.push('/login');
-  } else if (command === 'profile') {
-    goToProfile();
-  }
+// 跳转到登录页
+const goToLogin = () => {
+  router.push('/login');
 };
 </script>
 
@@ -401,16 +417,38 @@ const handleCommand = (command: string) => {
       align-items: center;
       gap: 18px;
 
-      .avatar-container {
-        cursor: pointer;
-        border-radius: 50%;
-        overflow: hidden;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      .profile-link {
+        text-decoration: none;
+      }
+
+      .profile-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 12px;
+        color: #333;
+        transition: all 0.3s ease;
+
+        &:hover {
+          color: #000;
+          background-color: #f5f5f5;
+          border-radius: 8px;
+        }
+
+        .el-icon {
+          font-size: 16px;
+        }
+      }
+      
+      .logout-btn {
+        color: #333;
+        font-weight: 500;
+        transition: all 0.3s ease;
         
         &:hover {
-          transform: scale(1.08);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          color: #000;
+          background-color: #f5f5f5;
+          border-radius: 8px;
         }
       }
 
@@ -447,6 +485,29 @@ const handleCommand = (command: string) => {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+    
+    .login-prompt-banner {
+      margin-bottom: 24px;
+      animation: fadeIn 0.5s ease-out;
+      
+      :deep(.el-alert) {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
+      
+      .prompt-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        
+        span {
+          font-size: 14px;
+          color: #606266;
+        }
+      }
+    }
 
     .filters {
       display: flex;

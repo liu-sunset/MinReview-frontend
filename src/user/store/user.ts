@@ -52,16 +52,17 @@ export const useUserStore = defineStore('user', {
     // 登出
     async logout() {
       try {
-        // 调用后端登出接口
         await userApi.logout();
-      } catch (error) {
-        console.error('登出请求错误:', error);
-      } finally {
-        // 无论接口是否成功，都清除本地存储
-        this.token = '';
-        this.userInfo = {};
+        // 清除本地存储
         localStorage.removeItem('token');
         localStorage.removeItem('userInfo');
+        // 清除状态
+        this.token = '';
+        this.userInfo = {};
+        return Promise.resolve();
+      } catch (error: any) {
+        console.error('登出请求错误:', error);
+        return Promise.reject(error);
       }
     }
   }

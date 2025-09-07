@@ -26,7 +26,10 @@ const userRoutes: Array<RouteRecordRaw> = [
   {
     path: '/profile',
     name: 'Profile',
-    component: () => import('../user/views/Profile.vue')
+    component: () => import('../user/views/Profile.vue'),
+    meta: {
+      requiresAuth: true
+    }
   }
 ]
 
@@ -154,8 +157,8 @@ router.beforeEach((to, from, next) => {
   }
   
   // 用户端路由权限验证
-  if (!to.path.startsWith('/admin') && to.name !== 'UserLogin' && to.name !== 'Register' && to.name !== 'Home') {
-    const userToken = localStorage.getItem('userToken')
+  if (to.meta?.requiresAuth) {
+    const userToken = localStorage.getItem('token')
     if (!userToken) {
       next('/login')
       return

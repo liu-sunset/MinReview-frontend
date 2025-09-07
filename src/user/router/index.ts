@@ -22,11 +22,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'DishDetail',
     component: () => import('../views/DishDetail.vue')
   },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: () => import('../views/Profile.vue')
-  }
+
 ];
 
 const router = createRouter({
@@ -37,11 +33,7 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token');
-  if (to.name !== 'Login' && to.name !== 'Register' && !token) {
-    next({ name: 'Login' });
-  } else {
-    next();
-  }
+  next();
 });
 
 export default router;

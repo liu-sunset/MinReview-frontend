@@ -95,3 +95,10 @@ export const updateAdminStatus = (adminId: number, status: number) => {
 export const updateAdminPassword = (adminId: number, data: UpdatePasswordParams) => {
   return request.put(`/admin/admin/password/${adminId}`, data)
 }
+
+/**
+ * 管理员登出
+ */
+export const adminLogout = () => {
+  return request.post('/admin/logout')
+}

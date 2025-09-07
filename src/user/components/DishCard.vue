@@ -16,7 +16,8 @@
         <div class="action-item">
           <el-button 
             :icon="Check" 
-            :class="{ 'active': isLiked }" 
+            :class="{ 'active': isLiked, 'disabled': !userStore.isLoggedIn }" 
+            :disabled="!userStore.isLoggedIn"
             circle 
             @click="handleLike"
           />
@@ -25,7 +26,8 @@
         <div class="action-item">
           <el-button 
             :icon="Close" 
-            :class="{ 'active': isDisliked }" 
+            :class="{ 'active': isDisliked, 'disabled': !userStore.isLoggedIn }" 
+            :disabled="!userStore.isLoggedIn"
             circle 
             @click="handleDislike"
           />
@@ -341,7 +343,18 @@ const goToDetail = () => {
           transform: scale(1.05);
         }
         
-        &:hover {
+        &.disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          
+          &:hover {
+            transform: none;
+            background-color: #f5f5f5;
+            box-shadow: none;
+          }
+        }
+        
+        &:hover:not(.disabled) {
           transform: translateY(-2px);
           background-color: #e0e0e0;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
