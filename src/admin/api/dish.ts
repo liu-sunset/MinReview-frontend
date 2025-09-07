@@ -9,8 +9,7 @@ export interface DishItem {
   imageUrl: string;
   categoryId?: number;
   categoryName?: string;
-  floorId: number;
-  floorName?: string;
+
   canteenId: number;
   canteenName?: string;
   campusId: number;
@@ -26,7 +25,7 @@ export interface DishListParams {
   page?: number;
   pageSize?: number;
   keyword?: string;
-  floorId?: number;
+
   categoryId?: number;
   canteenId?: number;
   campusId?: number;

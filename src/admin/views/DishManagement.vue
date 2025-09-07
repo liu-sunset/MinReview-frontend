@@ -4,43 +4,40 @@
     <div class="operation-bar">
       <div class="search-section">
         <el-select
-          v-model="selectedFloor"
-          placeholder="选择楼层"
-          class="floor-select"
+          v-model="selectedCampus"
+          placeholder="选择校区"
+          class="campus-select"
           clearable
-          @change="handleFloorChange"
+          @change="handleCampusChange"
         >
-          <el-option-group
-            v-for="canteen in canteenList"
-            :key="canteen.id"
-            :label="canteen.name"
+          <el-option
+            v-for="campus in campusList"
+            :key="campus.id"
+            :label="campus.name"
+            :value="campus.id"
           >
-            <el-option
-              v-for="floor in canteen.floors"
-              :key="floor.id"
-              :label="floor.name"
-              :value="floor.id"
-            >
-              <span>{{ floor.name }}</span>
-              <span class="floor-canteen">{{ canteen.name }}</span>
-            </el-option>
-          </el-option-group>
+            <span>{{ campus.name }}</span>
+          </el-option>
         </el-select>
         
         <el-select
-          v-model="selectedCategory"
-          placeholder="选择分类"
-          class="status-select"
+          v-model="selectedCanteen"
+          placeholder="选择食堂"
+          class="canteen-select"
           clearable
-          @change="handleCategoryChange"
+          @change="handleCanteenChange"
         >
           <el-option
-            v-for="category in categoryList"
-            :key="category.id"
-            :label="category.name"
-            :value="category.id"
-          />
+            v-for="canteen in filteredCanteenList"
+            :key="canteen.id"
+            :label="canteen.name"
+            :value="canteen.id"
+          >
+            <span>{{ canteen.name }}</span>
+          </el-option>
         </el-select>
+        
+
         
         <el-input
           v-model="searchKeyword"
@@ -115,21 +112,7 @@
         
         <el-table-column prop="name" label="菜品名称" min-width="150" />
         
-        <el-table-column prop="floorName" label="所属楼层" width="120">
-          <template #default="{ row }">
-            <el-tag type="info" size="small" class="floor-tag">
-              {{ row.floorName }}
-            </el-tag>
-          </template>
-        </el-table-column>
         
-        <el-table-column prop="categoryName" label="分类" width="120">
-          <template #default="{ row }">
-            <el-tag type="info" size="small">
-              {{ row.categoryName }}
-            </el-tag>
-          </template>
-        </el-table-column>
         
         <el-table-column prop="canteenName" label="所属食堂" width="120">
           <template #default="{ row }">
@@ -256,32 +239,7 @@
           </el-col>
         </el-row>
         
-        <el-form-item label="所属楼层" prop="floorId">
-          <el-cascader
-            v-model="formData.floorId"
-            :options="cascaderOptions"
-            :props="cascaderProps"
-            placeholder="请选择食堂和楼层"
-            class="form-cascader"
-            clearable
-          />
-        </el-form-item>
         
-        <el-form-item label="菜品分类" prop="categoryId">
-          <el-select
-            v-model="formData.categoryId"
-            placeholder="请选择菜品分类"
-            class="form-input"
-            clearable
-          >
-            <el-option
-              v-for="category in categoryList"
-              :key="category.id"
-              :label="category.name"
-              :value="category.id"
-            />
-          </el-select>
-        </el-form-item>
         
         <el-form-item label="菜品图片" prop="imageUrl">
           <el-upload
@@ -333,25 +291,20 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadProps } from 'element-plus'
 import { Search, Plus, Refresh, Edit, Delete, Picture } from '@element-plus/icons-vue'
 import dishApi, { type DishItem, type DishListParams } from '../api/dish'
-import { floorApi, type FloorItem } from '../api/floor'
 import { canteenApi, type CanteenItem } from '../api/canteen'
-import { categoryApi, type CategoryItem } from '../api/category'
+import { campusApi, type CampusItem } from '../api/campus'
 
-// 扩展的食堂类型，包含楼层信息
-interface CanteenWithFloors extends CanteenItem {
-  floors: FloorItem[]
-}
 
 // 响应式数据
 const loading = ref(false)
 const submitLoading = ref(false)
 const searchKeyword = ref('')
-const selectedFloor = ref<number | null>(null)
-const selectedCategory = ref<number | null>(null)
+const selectedCampus = ref<number | null>(null)
+const selectedCanteen = ref<number | null>(null)
 const statusFilter = ref<number | null>(null)
 const dishList = ref<DishItem[]>([])
-const canteenList = ref<CanteenWithFloors[]>([])
-const categoryList = ref<CategoryItem[]>([])
+const campusList = ref<CampusItem[]>([])
+const canteenList = ref<CanteenItem[]>([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref<FormInstance>()
@@ -372,11 +325,9 @@ const pagination = reactive({
 // 表单数据
 const formData = reactive<DishItem>({
   name: '',
-  floorId: 0,
   price: 0,
   description: '',
   imageUrl: '',
-  categoryId: undefined,
   status: 1,
   canteenId: 0,
   campusId: 0,
@@ -390,15 +341,9 @@ const formRules: FormRules = {
     { required: true, message: '请输入菜品名称', trigger: 'blur' },
     { min: 1, max: 50, message: '菜品名称长度在 1 到 50 个字符', trigger: 'blur' }
   ],
-  floorId: [
-    { required: true, message: '请选择所属楼层', trigger: 'change' }
-  ],
   price: [
     { required: true, message: '请输入菜品价格', trigger: 'blur' },
     { type: 'number', min: 0, message: '价格不能小于0', trigger: 'blur' }
-  ],
-  categoryId: [
-    { required: true, message: '请选择菜品分类', trigger: 'change' }
   ],
   description: [
     { required: true, message: '请输入菜品描述', trigger: 'blur' },
@@ -409,52 +354,42 @@ const formRules: FormRules = {
   ]
 }
 
-// 级联选择器配置
-const cascaderProps = {
-  value: 'id',
-  label: 'name',
-  children: 'floors',
-  emitPath: false
-}
-
 // 对话框标题
 const dialogTitle = computed(() => isEdit.value ? '编辑菜品' : '添加菜品')
 
-// 级联选择器选项
-const cascaderOptions = computed(() => {
-  return canteenList.value.map(canteen => ({
-    id: canteen.id,
-    name: canteen.name,
-    floors: canteen.floors
-  }))
-})
+// 根据选择的校区过滤食堂列表
+const filteredCanteenList = computed(() => canteenList.value);
 
-// 获取食堂和楼层列表
+// 获取校区列表
+const fetchCampusList = async () => {
+  try {
+    const response = await campusApi.getCampusList({
+      page: 1,
+      pageSize: 100
+    })
+    if (response.code === 1 && response.data) {
+      campusList.value = response.data.list || []
+    } else {
+      ElMessage.warning(response.msg || '获取校区列表失败')
+    }
+  } catch (error) {
+    console.error('获取校区列表失败:', error)
+    ElMessage.error('获取校区列表失败')
+  }
+}
+
+// 获取食堂列表
 const fetchCanteenList = async () => {
   try {
     // 获取食堂列表
-    const canteenResponse = await canteenApi.getCanteenList({})
+    const params = {
+      page: pagination.page,
+      pageSize: pagination.size,
+      ...(selectedCampus.value ? { campusId: selectedCampus.value } : {})
+    }
+    const canteenResponse = await canteenApi.getCanteenList(params)
     if (canteenResponse.code === 1 && canteenResponse.data) {
-      const canteens = canteenResponse.data.list || []
-      
-      // 为每个食堂获取楼层
-      const canteensWithFloors: CanteenWithFloors[] = []
-      
-      for (const canteen of canteens) {
-        try {
-          const floorResponse = await floorApi.getFloorList({ canteenId: canteen.id })
-          if (floorResponse.code === 1 && floorResponse.data) {
-            canteensWithFloors.push({
-              ...canteen,
-              floors: floorResponse.data.list || []
-            })
-          }
-        } catch (e) {
-          console.error(`获取食堂${canteen.id}的楼层失败:`, e)
-        }
-      }
-      
-      canteenList.value = canteensWithFloors
+      canteenList.value = canteenResponse.data.list || []
     }
   } catch (error) {
     console.error('获取食堂列表失败:', error)
@@ -487,8 +422,9 @@ const fetchDishList = async () => {
       page: pagination.page,
       pageSize: pagination.size,
       keyword: searchKeyword.value || undefined,
-      floorId: selectedFloor.value || undefined,
-      categoryId: selectedCategory.value || undefined
+
+      canteenId: selectedCanteen.value || undefined,
+      campusId: selectedCampus.value || undefined
     }
     
     // 如果状态筛选有值，添加到查询参数
@@ -508,6 +444,7 @@ const fetchDishList = async () => {
     }
     
   } catch (error) {
+    console.error('获取菜品列表失败:', error)
     ElMessage.error('获取菜品列表失败')
   } finally {
     loading.value = false
@@ -520,11 +457,27 @@ const handleSearch = () => {
   fetchDishList()
 }
 
-// 楼层变化处理
-const handleFloorChange = () => {
+// 校区变化处理
+const handleCampusChange = () => {
+  // 如果选择了校区，但当前选择的食堂不属于该校区，则清空食堂选择
+  if (selectedCampus.value && selectedCanteen.value) {
+    const currentCanteen = canteenList.value.find(c => c.id === selectedCanteen.value)
+    if (currentCanteen && currentCanteen.campusId !== selectedCampus.value) {
+      selectedCanteen.value = null
+        }
+  }
+  pagination.page = 1
+  fetchCanteenList()
+  fetchDishList()
+}
+
+// 食堂变化处理
+const handleCanteenChange = () => {
   pagination.page = 1
   fetchDishList()
 }
+
+
 
 // 状态筛选处理
 const handleStatusFilter = () => {
@@ -535,8 +488,9 @@ const handleStatusFilter = () => {
 // 刷新数据
 const refreshData = () => {
   searchKeyword.value = ''
+  selectedCampus.value = null
+  selectedCanteen.value = null
   selectedFloor.value = null
-  selectedCategory.value = null
   statusFilter.value = null
   pagination.page = 1
   fetchDishList()
@@ -650,23 +604,13 @@ const handleSubmit = async () => {
     
     submitLoading.value = true
     
-    // 从选择的楼层中获取食堂ID和校区ID
-    let canteenId = 0
-    let campusId = 0
-    
-    // 查找选中楼层所属的食堂
-    for (const canteen of canteenList.value) {
-      const floor = canteen.floors.find(f => f.id === formData.floorId)
-      if (floor) {
-        canteenId = canteen.id || 0
-        campusId = canteen.campusId || 0
-        break
-      }
-    }
+    // 获取当前选中的食堂和校区ID
+    const canteenId = selectedCanteen.value || 0
+    const campusId = selectedCampus.value || 0
     
     // 确保有食堂ID和校区ID
     if (!canteenId || !campusId) {
-      ElMessage.error('无法确定菜品所属的食堂或校区，请重新选择楼层')
+      ElMessage.error('请先选择校区和食堂')
       submitLoading.value = false
       return
     }
@@ -710,7 +654,7 @@ const resetForm = () => {
   }
   Object.assign(formData, {
     name: '',
-    floorId: 0,
+
     price: 0,
     description: '',
     imageUrl: '',
@@ -738,8 +682,8 @@ const handleCurrentChange = (page: number) => {
 
 // 组件挂载时获取数据
 onMounted(() => {
+  fetchCampusList()
   fetchCanteenList()
-  fetchCategoryList()
   fetchDishList()
 })
 </script>
@@ -767,6 +711,8 @@ onMounted(() => {
   max-width: 800px;
 }
 
+.campus-select,
+.canteen-select,
 .floor-select,
 .status-select {
   width: 150px;

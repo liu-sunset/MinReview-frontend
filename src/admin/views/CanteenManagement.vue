@@ -294,7 +294,11 @@ const dialogTitle = computed(() => isEdit.value ? '编辑食堂' : '添加食堂
 // 获取校区列表
 const fetchCampusList = async () => {
   try {
-    const response = await campusApi.getCampusList()
+    const params = {
+      page: 1, // 默认获取第一页
+      pageSize: 100 // 假设一次性获取所有校区，或者根据实际需求调整
+    }
+    const response = await campusApi.getCampusList(params)
     if (response.code === 1) {
       campusList.value = response.data.list || []
     } else {
@@ -317,7 +321,7 @@ const fetchCanteenList = async () => {
     }
     
     if (searchKeyword.value) {
-      params.keyword = searchKeyword.value
+      params.keyWord = searchKeyword.value
     }
     
     if (selectedCampus.value) {

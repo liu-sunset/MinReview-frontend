@@ -232,13 +232,18 @@ const fetchCampusList = async () => {
     const response = await getCampusList({
       page: pagination.page,
       pageSize: pagination.size,
-      keyword: searchKeyword.value
+      keyWord: searchKeyword.value
     })
     
-    campusList.value = response.data.list
-    pagination.total = response.data.total
+    if (response.code === 1) {
+      campusList.value = response.data.list || []
+      pagination.total = response.data.total || 0
+    } else {
+      ElMessage.error(response.msg || '获取校区列表失败')
+    }
     
   } catch (error: any) {
+    console.error('获取校区列表失败:', error)
     ElMessage.error(error.msg || '获取校区列表失败')
   } finally {
     loading.value = false

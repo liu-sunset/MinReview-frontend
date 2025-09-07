@@ -150,7 +150,7 @@ const fetchUserList = async () => {
     const response = await getUserList({
       page: pagination.page,
       pageSize: pagination.size,
-      keyword: searchKeyword.value
+      keyWord: searchKeyword.value
     })
     
     if (response.code === 1) {

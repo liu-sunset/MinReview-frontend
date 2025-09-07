@@ -102,7 +102,6 @@
               </el-avatar>
               <div class="user-details">
                 <div class="user-nickname">{{ row.userNickname }}</div>
-                <div class="user-id">ID: {{ row.userId }}</div>
               </div>
             </div>
           </template>
@@ -111,18 +110,6 @@
         <el-table-column label="菜品信息" width="200">
           <template #default="{ row }">
             <div class="dish-info">
-              <el-image
-                :src="row.dishImage"
-                :size="50"
-                class="dish-image"
-                fit="cover"
-              >
-                <template #error>
-                  <div class="image-slot">
-                    <el-icon><Picture /></el-icon>
-                  </div>
-                </template>
-              </el-image>
               <div class="dish-details">
                 <div class="dish-name">{{ row.dishName }}</div>
                 <div class="dish-location">{{ row.canteenName }} - {{ row.floorName }}</div>
@@ -155,18 +142,7 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="评分" width="100">
-          <template #default="{ row }">
-            <el-rate
-              v-model="row.rating"
-              disabled
-              show-score
-              text-color="#ff9900"
-              score-template="{value}"
-              class="comment-rating"
-            />
-          </template>
-        </el-table-column>
+
         
         <el-table-column prop="createdAt" label="评论时间" width="180">
           <template #default="{ row }">
@@ -224,12 +200,10 @@ interface CommentDisplayItem {
   userAvatar: string
   dishId: number
   dishName: string
-  dishImage: string
   canteenName: string
   floorName: string
   content: string
   images?: string[]
-  rating: number
   createdAt: string
 }
 
@@ -694,10 +668,6 @@ onMounted(() => {
   text-overflow: ellipsis;
 }
 
-.user-id {
-  font-size: 12px;
-  color: #999999;
-}
 
 .dish-info {
   display: flex;
@@ -705,23 +675,6 @@ onMounted(() => {
   gap: 8px;
 }
 
-.dish-image {
-  width: 50px;
-  height: 50px;
-  border-radius: 6px;
-  flex-shrink: 0;
-  
-  .image-slot {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-    background: #f5f7fa;
-    color: #909399;
-    font-size: 16px;
-  }
-}
 
 .dish-details {
   flex: 1;
@@ -776,16 +729,6 @@ onMounted(() => {
   }
 }
 
-.comment-rating {
-  :deep(.el-rate__item) {
-    margin-right: 2px;
-  }
-  
-  :deep(.el-rate__text) {
-    color: #333333;
-    font-weight: 500;
-  }
-}
 
 .time-info {
   .date-text {
