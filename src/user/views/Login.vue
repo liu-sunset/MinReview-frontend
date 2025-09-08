@@ -15,6 +15,20 @@
             show-password
           />
         </el-form-item>
+        <el-form-item prop="captcha">
+          <div class="captcha-container">
+            <el-input
+              v-model="loginForm.captcha"
+              placeholder="验证码"
+              prefix-icon="Picture"
+              class="captcha-input"
+            />
+            <div class="captcha-image" @click="refreshCaptcha">
+              <img v-if="captchaImageUrl" :src="captchaImageUrl" alt="验证码" />
+              <div v-else class="captcha-loading">加载中...</div>
+            </div>
+          </div>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="loading" @click="handleLogin" class="login-btn">登录</el-button>
         </el-form-item>
@@ -28,22 +42,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { User, Lock } from '@element-plus/icons-vue';
+import { User, Lock, Picture } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import { useUserStore } from '../store/user';
+import { captchaApi } from '../api/captcha';
 
 const router = useRouter();
 const userStore = useUserStore();
 
 const loginFormRef = ref<FormInstance>();
 const loading = ref(false);
+const captchaImageUrl = ref('');
 
 const loginForm = reactive({
   name: '',
-  password: ''
+  password: '',
+  captcha: ''
 });
 
 const rules = reactive<FormRules>({
@@ -54,8 +71,26 @@ const rules = reactive<FormRules>({
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, max: 20, message: '密码长度应为6-20个字符', trigger: 'blur' }
+  ],
+  captcha: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { min: 4, max: 6, message: '验证码长度应为4-6个字符', trigger: 'blur' }
   ]
 });
+
+// 获取验证码图片
+const getCaptchaImage = () => {
+  try {
+    captchaImageUrl.value = captchaApi.getCaptchaImageUrl();
+  } catch (error) {
+    ElMessage.error('获取验证码失败');
+  }
+}
+
+// 刷新验证码
+const refreshCaptcha = () => {
+  getCaptchaImage();
+};
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return;
@@ -64,18 +99,26 @@ const handleLogin = async () => {
     if (valid) {
       try {
         loading.value = true;
-        await userStore.login(loginForm.name, loginForm.password);
+        await userStore.login(loginForm.name, loginForm.password, loginForm.captcha);
         ElMessage.success('登录成功');
-        router.push('/');
+        router.push('/user');
       } catch (error: any) {
         console.error('登录错误:', error);
         ElMessage.error(error.response?.data?.msg || error.msg || '登录失败，请检查用户名和密码或网络连接是否正常');
+        // 登录失败后刷新验证码
+        refreshCaptcha();
+        loginForm.captcha = '';
       } finally {
         loading.value = false;
       }
     }
   });
 };
+
+// 组件挂载时获取验证码
+onMounted(() => {
+  getCaptchaImage();
+});
 </script>
 
 <style scoped lang="scss">
@@ -150,6 +193,46 @@ const handleLogin = async () => {
       &:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+      }
+    }
+
+    .captcha-container {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      
+      .captcha-input {
+        flex: 1;
+      }
+      
+      .captcha-image {
+        width: 120px;
+        height: 48px;
+        border: 1px solid #dcdfe6;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f5f7fa;
+        transition: all 0.3s ease;
+        
+        &:hover {
+          border-color: #409eff;
+          background: #ecf5ff;
+        }
+        
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 3px;
+        }
+        
+        .captcha-loading {
+          font-size: 12px;
+          color: #909399;
+        }
       }
     }
 

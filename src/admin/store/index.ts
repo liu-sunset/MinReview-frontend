@@ -21,7 +21,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
   
   // 登录
-  const login = async (loginParams: LoginParams) => {
+  const login = async (loginParams: LoginParams & { captcha: string }) => {
     try {
       const res = await adminLogin(loginParams)
       

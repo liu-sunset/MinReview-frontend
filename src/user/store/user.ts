@@ -14,10 +14,10 @@ export const useUserStore = defineStore('user', {
   },
   actions: {
     // 登录
-    async login(name: string, password: string) {
+    async login(name: string, password: string, captcha: string) {
       try {
-        console.log('发送登录请求:', { name, password });
-        const res = await userApi.login({ name, password });
+        console.log('发送登录请求:', { name, password, captcha });
+        const res = await userApi.login({ name, password, captcha });
         console.log('登录响应:', res);
         if (res.code === 1) {
           this.token = res.data.token;
@@ -34,10 +34,10 @@ export const useUserStore = defineStore('user', {
       }
     },
     // 注册
-    async register(name: string, password: string) {
+    async register(name: string, password: string, captcha: string) {
       try {
-        console.log('发送注册请求:', { name, password });
-        const res = await userApi.register({ name, password });
+        console.log('发送注册请求:', { name, password, captcha });
+        const res = await userApi.register({ name, password, captcha });
         console.log('注册响应:', res);
         if (res.code === 1) {
           return Promise.resolve(res);

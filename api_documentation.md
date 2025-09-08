@@ -1505,11 +1505,13 @@
   }
   ```
 
-  
 
-### 2.10 文件上传
 
-#### 2.10.1 上传图片
+
+## 3. 公共接口
+
+### 3.10 图片上传
+
 - **URL**: `/admin/file/upload/image`
 - **Method**: `POST`
 - **Headers**: 
@@ -1517,6 +1519,7 @@
   - `Content-Type: multipart/form-data`
 - **Request Body**: form-data with file
 - **Response**:
+
 ```json
 {
     "code": 1,
@@ -1525,7 +1528,73 @@
 }
 ```
 
-## 3. 错误码说明
+### 3.11 图形验证码
+
+#### 3.11.1获取图形验证码
+
+- **URL**: `/captcha/image`
+
+- **Method**: `GET`
+
+- **Headers**: `Authorization: Bearer <token>`
+
+- **后端接口代码：**
+
+  ```java
+  @GetMapping("/image")
+  public void getCaptchaImage(HttpServletRequest request, HttpServletResponse response) throws Exception {
+      log.info("请求数字图片验证码");
+      // 生成验证码文本
+      String capText = defaultKaptcha.createText();
+  
+      // 将验证码文本存入session
+      HttpSession session = request.getSession();
+      session.setAttribute(CAPTCHA_SESSION_KEY, capText);
+  
+      // 生成验证码图片
+      BufferedImage image = defaultKaptcha.createImage(capText);
+  
+      // 设置响应内容类型为图片
+      response.setContentType("image/jpeg");
+      response.setHeader("Pragma", "no-cache");
+      response.setHeader("Cache-Control", "no-cache");
+      response.setDateHeader("Expires", 0);
+  
+      // 将图片写入响应输出流
+      try (ServletOutputStream out = response.getOutputStream()) {
+          ImageIO.write(image, "jpg", out);
+          out.flush();
+      }
+  }
+  ```
+
+#### 3.11.2验证图形验证码
+
+- **URL**: `/verify`
+
+- **Method**: `POST`
+
+- **Headers**: `Authorization: Bearer <token>`
+
+- **后端接口代码:**
+
+  ```java
+      @PostMapping("/captcha/verify")
+      public Result verifyCaptcha(@RequestParam String code, HttpServletRequest request) {
+          HttpSession session = request.getSession();
+          String sessionCode = (String) session.getAttribute(CAPTCHA_SESSION_KEY);
+  
+          if (code == null || !code.equalsIgnoreCase(sessionCode)) {
+              return Result.error("验证码错误");
+          }
+  
+          // 验证成功后移除session中的验证码
+          session.removeAttribute(CAPTCHA_SESSION_KEY);
+          return Result.success("验证码正确");
+      }
+  ```
+
+## 4. 错误码说明
 
 | 错误码 | 说明 | 解决方案 |
 |--------|------|----------|
@@ -1553,7 +1622,7 @@
 | 1009 | 文件大小超过限制 |
 | 1010 | 管理员用户名已存在 |
 
-## 4. 注意事项
+## 5. 注意事项
 
 1. **认证Token**: 所有需要认证的接口都需要在Header中携带JWT Token
 2. **请求频率**: 部分接口有频率限制，注意控制请求频次
