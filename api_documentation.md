@@ -27,7 +27,8 @@
 ```json
 {
     "name": "zhangsan",
-    "password": "123456"
+    "password": "123456",
+    "captcha":"1234"
 }
 ```
 - **Response**:
@@ -130,7 +131,8 @@
   ```json
   {
       "name": "zhangsan",
-      "password": "123456"
+      "password": "123456",
+      "captcha":"1234"
   }
   ```
 
@@ -532,8 +534,9 @@
 - **Request Body**:
 ```json
 {
-    "username": "admin",
-    "password": "password"
+    "username": "zhangsan",
+    "password": "123456",
+    "captcha":"1234"
 }
 ```
 - **Response**:
@@ -1580,17 +1583,17 @@
 
   ```java
       @PostMapping("/captcha/verify")
-      public Result verifyCaptcha(@RequestParam String code, HttpServletRequest request) {
+      public boolean verifyCaptcha(@RequestParam String code, HttpServletRequest request) {
           HttpSession session = request.getSession();
           String sessionCode = (String) session.getAttribute(CAPTCHA_SESSION_KEY);
   
           if (code == null || !code.equalsIgnoreCase(sessionCode)) {
-              return Result.error("验证码错误");
+              return false;
           }
   
           // 验证成功后移除session中的验证码
           session.removeAttribute(CAPTCHA_SESSION_KEY);
-          return Result.success("验证码正确");
+          return true;
       }
   ```
 
